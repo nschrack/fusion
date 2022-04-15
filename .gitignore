@@ -1,6 +1,7 @@
 # custom
 .DS_Store
 wandb
+#amrbart/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

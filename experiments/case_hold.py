@@ -9,6 +9,9 @@ import os
 # adding case hold home directories to path for imports 
 sys.path.insert(0, os.getenv('HOME_PATH'))
 
+# deactivate wandb
+os.environ["WANDB_DISABLED"] = "true"
+
 import logging
 from dataclasses import dataclass, field
 from typing import Optional
@@ -31,7 +34,10 @@ from transformers import (
 )
 from transformers.trainer_utils import is_main_process
 from transformers import EarlyStoppingCallback
-from casehold_helpers import MultipleChoiceDataset, Split
+from dataloader_text import MultipleChoiceDataset as TextMultipleChoiceDataset
+from dataloader_text import Split as TextSplit
+from dataloader_amr import MultipleChoiceDataset as AMRMultipleChoiceDataset
+from dataloader_amr import Split as AMRSplit
 from sklearn.metrics import f1_score
 
 from models.bart import BartForMultipleChoiceClassificationSentRep as BartForMultipleChoice
@@ -199,6 +205,13 @@ def main():
 
 	train_dataset = None
 	eval_dataset = None
+
+	if model_args.is_amr:
+		MultipleChoiceDataset = AMRMultipleChoiceDataset
+		Split = AMRSplit
+	else:
+		MultipleChoiceDataset = TextMultipleChoiceDataset
+		Split = TextSplit
 
 	# If do_train passed, train_dataset by default loads train split from file named train.csv in data directory
 	if training_args.do_train:
