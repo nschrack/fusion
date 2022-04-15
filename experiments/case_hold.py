@@ -1,9 +1,15 @@
 #!/usr/bin/env python
 # coding=utf-8
+
 """ Finetuning models on CaseHOLD (e.g. Bert, RoBERTa, LEGAL-BERT)."""
 
-import logging
+import sys
 import os
+
+# adding case hold home directories to path for imports 
+sys.path.insert(0, os.getenv('HOME_PATH'))
+
+import logging
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -28,6 +34,8 @@ from transformers import EarlyStoppingCallback
 from casehold_helpers import MultipleChoiceDataset, Split
 from sklearn.metrics import f1_score
 
+from models.bart import BartForMultipleChoiceClassificationSentRep as BartForMultipleChoice
+from spring.spring_amr.tokenization_bart import PENMANBartTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +46,9 @@ class ModelArguments:
 	Arguments pertaining to which model/config/tokenizer we are going to fine-tune from.
 	"""
 
+	is_amr: bool = field(
+		metadata={"help": "Is the model training done with amr input"}
+	)
 	model_name_or_path: str = field(
 		metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
 	)
@@ -152,19 +163,39 @@ def main():
 		cache_dir=model_args.cache_dir,
 	)
 
-	tokenizer = AutoTokenizer.from_pretrained(
-		model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
-		cache_dir=model_args.cache_dir,
-		# Default fast tokenizer is buggy on CaseHOLD task, switch to legacy tokenizer
-		use_fast=True,
-	)
 
-	model = AutoModelForMultipleChoice.from_pretrained(
+	if model_args.is_amr:
+		tokenizer = PENMANBartTokenizer.from_pretrained(
+			# 'facebook/bart-base',
+			model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
+			cache_dir=model_args.cache_dir,
+			collapse_name_ops=False,
+			use_pointer_tokens=True,
+			raw_graph=False,
+		)
+	else:
+		tokenizer = AutoTokenizer.from_pretrained(
+			model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
+			cache_dir=model_args.cache_dir,
+			# Default fast tokenizer is buggy on CaseHOLD task, switch to legacy tokenizer
+			use_fast=True,
+		)
+
+
+	if config.model_type == 'bart':
+		model = BartForMultipleChoice.from_pretrained(
 		model_args.model_name_or_path,
 		from_tf=bool(".ckpt" in model_args.model_name_or_path),
 		config=config,
 		cache_dir=model_args.cache_dir,
-	)
+		)
+	else:
+		model = AutoModelForMultipleChoice.from_pretrained(
+			model_args.model_name_or_path,
+			from_tf=bool(".ckpt" in model_args.model_name_or_path),
+			config=config,
+			cache_dir=model_args.cache_dir,
+		)
 
 	train_dataset = None
 	eval_dataset = None
@@ -280,11 +311,6 @@ def main():
 	checkpoints = [filepath for filepath in glob.glob(f'{training_args.output_dir}/*/') if '/checkpoint' in filepath]
 	for checkpoint in checkpoints:
 		shutil.rmtree(checkpoint)
-
-
-def _mp_fn(index):
-	# For xla_spawn (TPUs)
-	main()
 
 
 if __name__ == "__main__":

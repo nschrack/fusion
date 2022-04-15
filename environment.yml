@@ -11,3 +11,12 @@ dependencies:
   - datasets>=1.18.1
   - nltk>=3.5
   - scipy>=1.6.3
+  - cached_property
+  - networkx
+  - penman>=1.1.0
+  - pytorch-ignite
+  - regex
+  - sacrebleu
+  - smatch
+  - wandb
+  - PyYAML>=5.1
