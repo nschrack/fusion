@@ -27,7 +27,6 @@ from transformers.trainer_utils import is_main_process
 from transformers import EarlyStoppingCallback
 from casehold_helpers import MultipleChoiceDataset, Split
 from sklearn.metrics import f1_score
-from models.deberta import DebertaForMultipleChoice
 
 
 logger = logging.getLogger(__name__)
@@ -153,11 +152,6 @@ def main():
 		cache_dir=model_args.cache_dir,
 	)
 
-	if config.model_type == 'big_bird':
-		config.attention_type = 'original_full'
-	elif config.model_type == 'longformer':
-		config.attention_window = [data_args.max_seq_length] * config.num_hidden_layers
-
 	tokenizer = AutoTokenizer.from_pretrained(
 		model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
 		cache_dir=model_args.cache_dir,
@@ -165,20 +159,12 @@ def main():
 		use_fast=True,
 	)
 
-	if config.model_type != 'deberta':
-		model = AutoModelForMultipleChoice.from_pretrained(
-			model_args.model_name_or_path,
-			from_tf=bool(".ckpt" in model_args.model_name_or_path),
-			config=config,
-			cache_dir=model_args.cache_dir,
-		)
-	else:
-		model = DebertaForMultipleChoice.from_pretrained(
-			model_args.model_name_or_path,
-			from_tf=bool(".ckpt" in model_args.model_name_or_path),
-			config=config,
-			cache_dir=model_args.cache_dir,
-		)
+	model = AutoModelForMultipleChoice.from_pretrained(
+		model_args.model_name_or_path,
+		from_tf=bool(".ckpt" in model_args.model_name_or_path),
+		config=config,
+		cache_dir=model_args.cache_dir,
+	)
 
 	train_dataset = None
 	eval_dataset = None
