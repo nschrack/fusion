@@ -24,4 +24,5 @@ CUDA_VISIBLE_DEVICES=${GPU_NUMBER} HOME_PATH=${HOME_PATH} python experiments/cas
     #--fp16 \
     #--fp16_full_eval \
     --gradient_accumulation_steps ${ACCUMULATION_STEPS} \
-    --eval_accumulation_steps ${ACCUMULATION_STEPS}
+    --eval_accumulation_steps ${ACCUMULATION_STEPS} \
+    #--is_amr 

@@ -8,7 +8,7 @@ import tqdm
 import re
 
 from filelock import FileLock
-from transformers import PreTrainedTokenizer, is_tf_available, is_torch_available
+from transformers import PreTrainedTokenizer
 import datasets
 
 import torch
@@ -117,38 +117,59 @@ def convert_examples_to_features(
         choices_inputs = []
         for ending_idx, ending in enumerate(example['endings']):
             context = example['context']
-            inputs = tokenizer(
-                context,
-                ending,
-                add_special_tokens=True,
-                max_length=max_length,
-                padding="max_length",
-                truncation=True,
-            )
+
+            inputs = [tokenizer.bos_token] \
+                + context.split() \
+                + [tokenizer.eos_token] \
+                + [tokenizer.eos_token] \
+                + ending.split() \
+                + [tokenizer.eos_token]
+
+            if len(inputs) > max_length:
+                logger.error("Input too long: implementation does not support truncate.")
 
             choices_inputs.append(inputs)
-        
-        label = example['label']
+        input_ids = amr_batch_encode(tokenizer, choices_inputs, max_length = max_length, pad_to_max_length=True)
 
-        input_ids = [x["input_ids"] for x in choices_inputs]
-        attention_mask = (
-            [x["attention_mask"] for x in choices_inputs] if "attention_mask" in choices_inputs[0] else None
+        model_inputs = {}
+        model_inputs['input_ids'] = input_ids
+
+        input_features = tokenizer.pad(
+            model_inputs,
+            padding='max_length',
+            max_length=max_length,
         )
-        token_type_ids = (
-            [x["token_type_ids"] for x in choices_inputs] if "token_type_ids" in choices_inputs[0] else None
-        )
+
+        label = example['label']
 
         features.append(
             InputFeatures(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                token_type_ids=token_type_ids,
+                input_ids=input_features['input_ids'],
+                attention_mask=input_features['attention_mask'],
+                token_type_ids=None,
                 label=label,
             )
         )
+    return features    
 
-    for f in features[:2]:
-        logger.info("*** Example ***")
-        logger.info("feature: %s" % f)
+def amr_batch_encode(tokenizer, input_lst, max_length = 0, pad_to_max_length=False):
+    res = []
+    for itm_lst in input_lst:
+        res.append(
+            get_ids(tokenizer, itm_lst, max_length, pad_to_max_length=pad_to_max_length)
+        )
 
-    return features
+    return res
+
+def get_ids(tokenizer, tokens, max_length=0, pad_to_max_length=False):
+    token_ids = [tokenizer.encoder.get(b, tokenizer.unk_token_id) for b in tokens]
+    if pad_to_max_length:
+        assert max_length > 0, "Invalid max-length: {}".format(max_length)
+        pad_ids = [tokenizer.pad_token_id for _ in range(max_length)]
+        len_tok = len(token_ids)
+        if max_length > len_tok:
+            pad_ids[:len_tok] = map(int, token_ids)
+        else:
+            pad_ids = token_ids[:max_length]
+        return pad_ids
+    return token_ids
