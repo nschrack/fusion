@@ -1,7 +1,13 @@
+#!/bin/bash
+#SBATCH --mem=30G
+#SBATCH --time=5-0
+#SBATCH -p gpu --gres=gpu:titanx:1
+#SBATCH -c6
+
 GPU_NUMBER=0
 MODEL_NAME='bert-base-uncased'
 BATCH_SIZE=8
-ACCUMULATION_STEPS=1
+ACCUMULATION_STEPS=2
 TASK='case_hold'
 HOME_PATH='/Users/niko/ML/case_hold'
 DATA_SET_PATH='/Users/niko/ML/case_hold/data/LogiQADataset/dataset_text'
@@ -27,5 +33,5 @@ CUDA_VISIBLE_DEVICES=${GPU_NUMBER} HOME_PATH=${HOME_PATH} python experiments/cas
     --gradient_accumulation_steps ${ACCUMULATION_STEPS} \
     --eval_accumulation_steps ${ACCUMULATION_STEPS} \
     --max_seq_length 256
-    #--fp16 \
-    #--fp16_full_eval \
+    --fp16 \
+    --fp16_full_eval \

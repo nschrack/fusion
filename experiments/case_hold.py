@@ -195,6 +195,7 @@ def main():
 		config=config,
 		cache_dir=model_args.cache_dir,
 		)
+		model.resize_token_embeddings(len(tokenizer))
 	else:
 		model = AutoModelForMultipleChoice.from_pretrained(
 			model_args.model_name_or_path,
