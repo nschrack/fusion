@@ -75,7 +75,7 @@ class DataTrainingArguments:
 	"""
 	Arguments pertaining to what data we are going to input our model for training and eval.
 	"""
-
+	data_set_path: str = field(default="", metadata={"help": "The path to the data set (if locally)"})
 	task_name: str = field(default="case_hold", metadata={"help": "The name of the task to train on"})
 	max_seq_length: int = field(
 		default=256,
@@ -172,8 +172,8 @@ def main():
 
 	if model_args.is_amr:
 		tokenizer = PENMANBartTokenizer.from_pretrained(
-			# 'facebook/bart-base',
-			model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
+			'facebook/bart-base', # TODO fix to work with args
+			#model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
 			cache_dir=model_args.cache_dir,
 			collapse_name_ops=False,
 			use_pointer_tokens=True,
@@ -217,6 +217,7 @@ def main():
 	if training_args.do_train:
 		train_dataset = \
 			MultipleChoiceDataset(
+				data_args=data_args,
 				tokenizer=tokenizer,
 				task=data_args.task_name,
 				max_seq_length=data_args.max_seq_length,
@@ -228,6 +229,7 @@ def main():
 	if training_args.do_eval:
 		eval_dataset = \
 			MultipleChoiceDataset(
+				data_args=data_args,
 				tokenizer=tokenizer,
 				task=data_args.task_name,
 				max_seq_length=data_args.max_seq_length,
@@ -238,6 +240,7 @@ def main():
 	if training_args.do_predict:
 		predict_dataset = \
 			MultipleChoiceDataset(
+				data_args=data_args,
 				tokenizer=tokenizer,
 				task=data_args.task_name,
 				max_seq_length=data_args.max_seq_length,
@@ -321,9 +324,9 @@ def main():
 					writer.write(f"{index}\t{pred_line}\n")
 
 	# Clean up checkpoints
-	checkpoints = [filepath for filepath in glob.glob(f'{training_args.output_dir}/*/') if '/checkpoint' in filepath]
-	for checkpoint in checkpoints:
-		shutil.rmtree(checkpoint)
+	#checkpoints = [filepath for filepath in glob.glob(f'{training_args.output_dir}/*/') if '/checkpoint' in filepath]
+	#for checkpoint in checkpoints:
+	#	shutil.rmtree(checkpoint)
 
 
 if __name__ == "__main__":

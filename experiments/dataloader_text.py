@@ -47,13 +47,16 @@ class MultipleChoiceDataset(Dataset):
 
     def __init__(
         self,
+        data_args,
         tokenizer: PreTrainedTokenizer,
         task: str,
         max_seq_length: Optional[int] = None,
         overwrite_cache=False,
         mode: Split = Split.train,
     ):
-        dataset = datasets.load_dataset('lex_glue', task)
+        #dataset = datasets.load_dataset('lex_glue', task)
+        dataset = datasets.load_from_disk(data_args.data_set_path)
+
         tokenizer_name = re.sub('[^a-z]+', ' ', tokenizer.name_or_path).title().replace(' ', '')
         cached_features_file = os.path.join(
             '.cache',
@@ -117,15 +120,15 @@ def convert_examples_to_features(
         choices_inputs = []
         for ending_idx, ending in enumerate(example['endings']):
             context = example['context']
+            question = example['question']
             inputs = tokenizer(
                 context,
-                ending,
+                question + ending ,
                 add_special_tokens=True,
                 max_length=max_length,
                 padding="max_length",
                 truncation=True,
             )
-
             choices_inputs.append(inputs)
         
         label = example['label']
@@ -146,9 +149,5 @@ def convert_examples_to_features(
                 label=label,
             )
         )
-
-    for f in features[:2]:
-        logger.info("*** Example ***")
-        logger.info("feature: %s" % f)
 
     return features

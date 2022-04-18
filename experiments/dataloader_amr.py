@@ -14,7 +14,6 @@ import datasets
 import torch
 from torch.utils.data.dataset import Dataset
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -47,13 +46,16 @@ class MultipleChoiceDataset(Dataset):
 
     def __init__(
         self,
+        data_args,
         tokenizer: PreTrainedTokenizer,
         task: str,
         max_seq_length: Optional[int] = None,
         overwrite_cache=False,
         mode: Split = Split.train,
     ):
-        dataset = datasets.load_dataset('lex_glue', task)
+        
+        dataset = datasets.load_from_disk(data_args.data_set_path)
+
         tokenizer_name = re.sub('[^a-z]+', ' ', tokenizer.name_or_path).title().replace(' ', '')
         cached_features_file = os.path.join(
             '.cache',
@@ -73,6 +75,7 @@ class MultipleChoiceDataset(Dataset):
             if not os.path.exists('.cache'):
                 os.mkdir('.cache')
             os.mkdir(os.path.join('.cache', task))
+
         with FileLock(lock_path):
 
             if os.path.exists(cached_features_file) and not overwrite_cache:
@@ -86,12 +89,14 @@ class MultipleChoiceDataset(Dataset):
                     examples = dataset['test']
                 elif mode == Split.train:
                     examples = dataset['train']
-                logger.info("Training examples: %s", len(examples))
+                
                 self.features = convert_examples_to_features(
                     examples,
                     max_seq_length,
                     tokenizer,
                 )
+                logger.info("Training examples: %s", len(self.features))
+
                 logger.info("Saving features into cached file %s", cached_features_file)
                 torch.save(self.features, cached_features_file)
 
@@ -115,21 +120,25 @@ def convert_examples_to_features(
         if ex_index % 10000 == 0:
             logger.info("Writing example %d of %d" % (ex_index, len(examples)))
         choices_inputs = []
+
         for ending_idx, ending in enumerate(example['endings']):
             context = example['context']
+            question = example['question']
 
             inputs = [tokenizer.bos_token] \
                 + context.split() \
                 + [tokenizer.eos_token] \
                 + [tokenizer.eos_token] \
+                + question.split() \
                 + ending.split() \
-                + [tokenizer.eos_token]
+                + [tokenizer.eos_token] \
 
             if len(inputs) > max_length:
                 logger.error("Input too long: implementation does not support truncate.")
 
             choices_inputs.append(inputs)
-        input_ids = amr_batch_encode(tokenizer, choices_inputs, max_length = max_length, pad_to_max_length=True)
+
+        input_ids = amr_batch_encode(tokenizer, choices_inputs, max_length = max_length, pad_to_max_length=False)
 
         model_inputs = {}
         model_inputs['input_ids'] = input_ids

@@ -1,1 +1,0 @@
-pre_process_logiqa.py
