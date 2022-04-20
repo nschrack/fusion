@@ -185,23 +185,6 @@ def main():
 			use_fast=True,
 		)
 
-
-	#if config.model_type == 'bart':
-	#	model = BartForMultipleChoice.from_pretrained(
-	#	model_args.model_name_or_path,
-	#	from_tf=bool(".ckpt" in model_args.model_name_or_path),
-	#	config=config,
-	#	cache_dir=model_args.cache_dir,
-	#	)
-	#	model.resize_token_embeddings(len(tokenizer))
-	#else:
-		#model = AutoModelForMultipleChoice.from_pretrained(
-		#	model_args.model_name_or_path,
-		#from_tf=bool(".ckpt" in model_args.model_name_or_path),
-		#	config=config,
-		#	cache_dir=model_args.cache_dir,
-		#)
-
 	amr_config = AutoConfig.from_pretrained(
 		model_args.model_name_or_path_amr,
 		num_labels=5,
@@ -210,26 +193,18 @@ def main():
 	)
 
 	text_model = torch.hub.load('huggingface/pytorch-transformers', 'model', model_args.model_name_or_path_text) 
-	#amr_model = torch.hub.load('huggingface/pytorch-transformers', 'model', model_args.model_name_or_path) 
-	amr_model = BartForMultipleChoice.from_pretrained(	
-		model_args.model_name_or_path_amr,
-		from_tf=bool(".ckpt" in model_args.model_name_or_path_amr),
-		config=amr_config,
-		cache_dir=model_args.cache_dir,
-	)
-	amr_model.resize_token_embeddings(len(tokenizer_amr))
+	amr_model = torch.hub.load('huggingface/pytorch-transformers', 'model', model_args.model_name_or_path_amr) 
 
 	model = Fusion(
 		text_model = text_model,
 		amr_model = amr_model,
-		concat_emb_dim = 1536,
+		concat_emb_dim = 1536,	 # last hidden state size of both models added up
 		classifier_dropout = 0.1,
 		amr_eos_token_id = amr_config.eos_token_id
 	)
 
 	train_dataset = None
 	eval_dataset = None
-
 
 	# If do_train passed, train_dataset by default loads train split from file named train.csv in data directory
 	if training_args.do_train:

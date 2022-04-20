@@ -18,21 +18,13 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class InputFeatures:
-    input_ids: List[List[int]]
-    attention_mask: Optional[List[List[int]]]
-    token_type_ids: Optional[List[List[int]]]
-
-@dataclass(frozen=True)
-class InputFusion:
-    """
-    A single set of features of data.
-    Property names are the same names as the corresponding inputs to a model.
-    """
-    text: Optional[InputFeatures]
-    amr: Optional[InputFeatures]
-    label: Optional[int]
-
-
+    text_input_ids: List[List[int]]
+    text_attention_mask: Optional[List[List[int]]]
+    text_token_type_ids: Optional[List[List[int]]]
+    amr_input_ids: List[List[int]]
+    amr_attention_mask: Optional[List[List[int]]]
+    labels: Optional[int]
+    
 
 class Split(Enum):
     train = "train"
@@ -40,13 +32,12 @@ class Split(Enum):
     test = "test"
 
 
-
 class MultipleChoiceDataset(Dataset):
     """
     PyTorch multiple choice dataset class
     """
 
-    features: List[InputFusion]
+    features: List[InputFeatures]
 
     def __init__(
         self,
@@ -114,7 +105,7 @@ class MultipleChoiceDataset(Dataset):
     def __len__(self):
         return len(self.features)
 
-    def __getitem__(self, i) -> InputFusion:
+    def __getitem__(self, i) -> InputFeatures:
         return self.features[i]
 
 
@@ -125,7 +116,7 @@ def convert_examples_to_features(
     max_length_amr: int,
     tokenizer_text: PreTrainedTokenizer,
     tokenizer_amr: PreTrainedTokenizer
-) -> List[InputFusion]:
+) -> List[InputFeatures]:
     """
     Loads a data file into a list of `InputFusion`
     """
@@ -134,16 +125,19 @@ def convert_examples_to_features(
         if ex_index % 10000 == 0:
             logger.info("Writing example %d of %d" % (ex_index, len(examples_text)))
 
-        input_text = get_input_feature_text(examples_text[ex_index], tokenizer_text, max_length_text)
-        input_amr = get_input_feature_amr(examples_amr[ex_index], tokenizer_amr, max_length_amr)
+        text_input_ids, text_attention_mask, text_token_type_ids  = get_input_feature_text(examples_text[ex_index], tokenizer_text, max_length_text)
+        amr_input_ids, amr_attention_mask = get_input_feature_amr(examples_amr[ex_index], tokenizer_amr, max_length_amr)
 
         label = examples_text[ex_index]['label']
 
         features.append(
-            InputFusion(
-                text=input_text,
-                amr=input_amr,
-                label=label
+            InputFeatures(
+                text_input_ids=text_input_ids,
+                text_attention_mask=text_attention_mask,
+                text_token_type_ids=text_token_type_ids,
+                amr_input_ids=amr_input_ids,
+                amr_attention_mask=amr_attention_mask,
+                labels=label
             )
         )
 
@@ -179,12 +173,7 @@ def get_input_feature_amr(example, tokenizer_amr, max_length):
         max_length=max_length,
     )
 
-    feature = InputFeatures(
-        input_ids=input_features['input_ids'],
-        attention_mask=input_features['attention_mask'],
-        token_type_ids=None,
-    )
-    return feature
+    return input_features['input_ids'], input_features['attention_mask']
     
 
 def get_input_feature_text(example, tokenizer_text, max_length):
@@ -211,12 +200,7 @@ def get_input_feature_text(example, tokenizer_text, max_length):
         [x["token_type_ids"] for x in choices_inputs] if "token_type_ids" in choices_inputs[0] else None
     )
 
-    feature = InputFeatures(
-        input_ids=input_ids,
-        attention_mask=attention_mask,
-        token_type_ids=token_type_ids,
-    )
-    return feature
+    return input_ids, attention_mask, token_type_ids
 
 def amr_batch_encode(tokenizer, input_lst, max_length = 0, pad_to_max_length=False):
     res = []

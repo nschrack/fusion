@@ -1,15 +1,15 @@
 #!/bin/bash
 #SBATCH --mem=30G
 #SBATCH --time=5-0
-#SBATCH -p gpu --gres=gpu:titanx:1
+#SBATCH -p gpu --gres=gpu:titanrtx:1
 #SBATCH -c6
 
 GPU_NUMBER=0
 MODEL_NAME_TEXT='bert-base-uncased'
 MODEL_NAME_AMR='/Users/niko/ML/case_hold/amrbart/model'
-BATCH_SIZE=8
+BATCH_SIZE=4
 ACCUMULATION_STEPS=2
-TASK='case_hold'
+TASK='logiqa_amr'
 HOME_PATH='/Users/niko/ML/fusion'
 DATA_SET_PATH_TEXT='/Users/niko/ML/fusion/data/LogiQADataset/dataset_text'
 DATA_SET_PATH_AMR='/Users/niko/ML/fusion/data/LogiQADataset/dataset_amr'
@@ -38,6 +38,11 @@ CUDA_VISIBLE_DEVICES=${GPU_NUMBER} HOME_PATH=${HOME_PATH} python experiments/mc.
     --eval_accumulation_steps ${ACCUMULATION_STEPS} \
     --max_seq_length_text 256 \
     --max_seq_length_amr 1024 \
+    --max_train_samples 4 \
+    --max_eval_samples 4 \
+    --max_predict_samples 4 \
     --overwrite_cache \
-    #--fp16 \
-    #--fp16_full_eval \
+    --fp16 \
+    --fp16_full_eval \
+    --optim adafactor \
+    --gradient_checkpointing \
