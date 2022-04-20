@@ -5,6 +5,7 @@
 
 import sys
 import os
+import torch
 
 # adding case hold home directories to path for imports 
 sys.path.insert(0, os.getenv('HOME_PATH'))
@@ -18,8 +19,6 @@ from typing import Optional
 
 import numpy as np
 import random
-import shutil
-import glob
 
 import transformers
 from transformers import (
@@ -34,13 +33,12 @@ from transformers import (
 )
 from transformers.trainer_utils import is_main_process
 from transformers import EarlyStoppingCallback
-from dataloader_text import MultipleChoiceDataset as TextMultipleChoiceDataset
-from dataloader_text import Split as TextSplit
-from dataloader_amr import MultipleChoiceDataset as AMRMultipleChoiceDataset
-from dataloader_amr import Split as AMRSplit
+from dataloader_fusion import MultipleChoiceDataset
+from dataloader_fusion import Split
 from sklearn.metrics import f1_score
 
 from models.bart import BartForMultipleChoiceClassificationSentRep as BartForMultipleChoice
+from models.fusion import Fusion
 from spring.spring_amr.tokenization_bart import PENMANBartTokenizer
 
 logger = logging.getLogger(__name__)
@@ -52,10 +50,10 @@ class ModelArguments:
 	Arguments pertaining to which model/config/tokenizer we are going to fine-tune from.
 	"""
 
-	is_amr: bool = field(
-		metadata={"help": "Is the model training done with amr input"}
+	model_name_or_path_text: str = field(
+		metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
 	)
-	model_name_or_path: str = field(
+	model_name_or_path_amr: str = field(
 		metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
 	)
 	config_name: Optional[str] = field(
@@ -75,10 +73,19 @@ class DataTrainingArguments:
 	"""
 	Arguments pertaining to what data we are going to input our model for training and eval.
 	"""
-	data_set_path: str = field(default="", metadata={"help": "The path to the data set (if locally)"})
+	data_set_path_text: str = field(default="", metadata={"help": "The path to the text data set (if locally)"})
+	data_set_path_amr: str = field(default="", metadata={"help": "The path to the amr data set (if locally)"})
+
 	task_name: str = field(default="case_hold", metadata={"help": "The name of the task to train on"})
-	max_seq_length: int = field(
+	max_seq_length_text: int = field(
 		default=256,
+		metadata={
+			"help": "The maximum total input sequence length after tokenization. Sequences longer "
+			"than this will be truncated, sequences shorter will be padded."
+		},
+	)
+	max_seq_length_amr: int = field(
+		default=1024,
 		metadata={
 			"help": "The maximum total input sequence length after tokenization. Sequences longer "
 			"than this will be truncated, sequences shorter will be padded."
@@ -162,66 +169,76 @@ def main():
 	set_seed(training_args.seed)
 
 	# Load pretrained model and tokenizer
-	config = AutoConfig.from_pretrained(
-		model_args.config_name if model_args.config_name else model_args.model_name_or_path,
-		num_labels=5,
-		finetuning_task=data_args.task_name,
-		cache_dir=model_args.cache_dir,
-	)
 
-
-	if model_args.is_amr:
-		tokenizer = PENMANBartTokenizer.from_pretrained(
-			'facebook/bart-base', # TODO fix to work with args
+	tokenizer_amr = PENMANBartTokenizer.from_pretrained(
+			'facebook/bart-base', 
 			#model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
 			cache_dir=model_args.cache_dir,
 			collapse_name_ops=False,
 			use_pointer_tokens=True,
 			raw_graph=False,
 		)
-	else:
-		tokenizer = AutoTokenizer.from_pretrained(
-			model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
+	tokenizer_text = AutoTokenizer.from_pretrained(
+			model_args.model_name_or_path_text,
 			cache_dir=model_args.cache_dir,
 			# Default fast tokenizer is buggy on CaseHOLD task, switch to legacy tokenizer
 			use_fast=True,
 		)
 
 
-	if config.model_type == 'bart':
-		model = BartForMultipleChoice.from_pretrained(
-		model_args.model_name_or_path,
-		from_tf=bool(".ckpt" in model_args.model_name_or_path),
-		config=config,
+	#if config.model_type == 'bart':
+	#	model = BartForMultipleChoice.from_pretrained(
+	#	model_args.model_name_or_path,
+	#	from_tf=bool(".ckpt" in model_args.model_name_or_path),
+	#	config=config,
+	#	cache_dir=model_args.cache_dir,
+	#	)
+	#	model.resize_token_embeddings(len(tokenizer))
+	#else:
+		#model = AutoModelForMultipleChoice.from_pretrained(
+		#	model_args.model_name_or_path,
+		#from_tf=bool(".ckpt" in model_args.model_name_or_path),
+		#	config=config,
+		#	cache_dir=model_args.cache_dir,
+		#)
+
+	amr_config = AutoConfig.from_pretrained(
+		model_args.model_name_or_path_amr,
+		num_labels=5,
+		finetuning_task=data_args.task_name,
 		cache_dir=model_args.cache_dir,
-		)
-		model.resize_token_embeddings(len(tokenizer))
-	else:
-		model = AutoModelForMultipleChoice.from_pretrained(
-			model_args.model_name_or_path,
-			from_tf=bool(".ckpt" in model_args.model_name_or_path),
-			config=config,
-			cache_dir=model_args.cache_dir,
-		)
+	)
+
+	text_model = torch.hub.load('huggingface/pytorch-transformers', 'model', model_args.model_name_or_path_text) 
+	#amr_model = torch.hub.load('huggingface/pytorch-transformers', 'model', model_args.model_name_or_path) 
+	amr_model = BartForMultipleChoice.from_pretrained(	
+		model_args.model_name_or_path_amr,
+		from_tf=bool(".ckpt" in model_args.model_name_or_path_amr),
+		config=amr_config,
+		cache_dir=model_args.cache_dir,
+	)
+	amr_model.resize_token_embeddings(len(tokenizer_amr))
+
+	model = Fusion(
+		text_model = text_model,
+		amr_model = amr_model,
+		concat_emb_dim = 1536,
+		classifier_dropout = 0.1,
+		amr_eos_token_id = amr_config.eos_token_id
+	)
 
 	train_dataset = None
 	eval_dataset = None
 
-	if model_args.is_amr:
-		MultipleChoiceDataset = AMRMultipleChoiceDataset
-		Split = AMRSplit
-	else:
-		MultipleChoiceDataset = TextMultipleChoiceDataset
-		Split = TextSplit
 
 	# If do_train passed, train_dataset by default loads train split from file named train.csv in data directory
 	if training_args.do_train:
 		train_dataset = \
 			MultipleChoiceDataset(
 				data_args=data_args,
-				tokenizer=tokenizer,
+				tokenizer_text=tokenizer_text,
+				tokenizer_amr=tokenizer_amr,
 				task=data_args.task_name,
-				max_seq_length=data_args.max_seq_length,
 				overwrite_cache=data_args.overwrite_cache,
 				mode=Split.train,
 			)
@@ -231,9 +248,9 @@ def main():
 		eval_dataset = \
 			MultipleChoiceDataset(
 				data_args=data_args,
-				tokenizer=tokenizer,
+				tokenizer_text=tokenizer_text,
+				tokenizer_amr=tokenizer_amr,
 				task=data_args.task_name,
-				max_seq_length=data_args.max_seq_length,
 				overwrite_cache=data_args.overwrite_cache,
 				mode=Split.dev,
 			)
@@ -242,9 +259,9 @@ def main():
 		predict_dataset = \
 			MultipleChoiceDataset(
 				data_args=data_args,
-				tokenizer=tokenizer,
+				tokenizer_text=tokenizer_text,
+				tokenizer_amr=tokenizer_amr,
 				task=data_args.task_name,
-				max_seq_length=data_args.max_seq_length,
 				overwrite_cache=data_args.overwrite_cache,
 				mode=Split.test,
 			)
@@ -285,12 +302,9 @@ def main():
 	# Training
 	if training_args.do_train:
 		trainer.train(
-			model_path=model_args.model_name_or_path if os.path.isdir(model_args.model_name_or_path) else None
+			model_path=model_args.model_name_or_path_text if os.path.isdir(model_args.model_name_or_path_text) else None
 		)
 		trainer.save_model()
-		# Re-save the tokenizer for model sharing
-		if trainer.is_world_process_zero():
-			tokenizer.save_pretrained(training_args.output_dir)
 
 	# Evaluation on eval_dataset
 	if training_args.do_eval:
