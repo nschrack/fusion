@@ -1,24 +1,27 @@
-name: fusion
+name: fusion_pl
 dependencies:
 - python=3.8
-- pip
+- pytorch-lightning=1.5.3
+- torchvision
+- transformers=4.15.0
+- scikit-learn>=0.24.1
+- tqdm>=4.61.1
+- numpy>=1.20.1
+- datasets>=1.18.1
+- nltk>=3.5
+- scipy>=1.6.3
+- cached_property
+- networkx
+- pytorch-ignite
+- regex
+- sacrebleu
+- smatch
+- wandb
+- PyYAML>=5.1
+- sentencepiece
+- importlib_metadata
+- pip 
 - pip:
-  - torch>=1.9.0
-  - transformers>=4.9.0
-  - scikit-learn>=0.24.1
-  - tqdm>=4.61.1
-  - numpy>=1.20.1
-  - datasets>=1.18.1
-  - nltk>=3.5
-  - scipy>=1.6.3
-  - cached_property
-  - networkx
   - penman>=1.1.0
-  - pytorch-ignite
-  - regex
-  - sacrebleu
-  - smatch
-  - wandb
-  - PyYAML>=5.1
-  - sentencepiece
-  - importlib_metadata
+  - torch>=1.9.0
+

@@ -3,6 +3,7 @@ import torch
 from torch import nn
 from transformers.modeling_outputs import MultipleChoiceModelOutput
 
+
 class Fusion(nn.Module):
     """Fusion Model"""
 
@@ -35,7 +36,6 @@ class Fusion(nn.Module):
         amr_attention_mask=None,
         labels=None
     ):
-
         num_choices = text_input_ids.shape[1] if text_input_ids is not None else None
         
         text_input_ids = text_input_ids.view(-1, text_input_ids.size(-1)) if text_input_ids is not None else None
@@ -74,13 +74,7 @@ class Fusion(nn.Module):
             loss_fct = nn.CrossEntropyLoss()
             loss = loss_fct(reshaped_logits, labels)
 
-        
-        return MultipleChoiceModelOutput(
-            loss=loss,
-            logits=reshaped_logits,
-            hidden_states=None,
-            attentions=None,
-        )
+        return loss, reshaped_logits
 
 class BartClassificationHead(nn.Module):
     """Head for sentence-level classification tasks."""

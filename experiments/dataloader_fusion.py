@@ -10,10 +10,10 @@ import re
 from filelock import FileLock
 from transformers import PreTrainedTokenizer
 import datasets
-
+from torchvision import transforms
 import torch
 from torch.utils.data.dataset import Dataset
-
+import numpy as np
 logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
@@ -48,7 +48,8 @@ class MultipleChoiceDataset(Dataset):
         overwrite_cache=False,
         mode: Split = Split.train,
     ):
-        
+        self.transform = transforms.Compose([transforms.ToTensor()])  # you can add to the list all the transformations you need. 
+
         dataset_text = datasets.load_from_disk(data_args.data_set_path_text)
         dataset_amr = datasets.load_from_disk(data_args.data_set_path_amr)
 
@@ -106,7 +107,21 @@ class MultipleChoiceDataset(Dataset):
         return len(self.features)
 
     def __getitem__(self, i) -> InputFeatures:
-        return self.features[i]
+
+        sample = [
+            torch.tensor(self.features[i].text_input_ids),
+            torch.tensor(self.features[i].text_attention_mask),
+            torch.tensor(self.features[i].text_token_type_ids),
+            torch.tensor(self.features[i].amr_input_ids), 
+            torch.tensor(self.features[i].amr_attention_mask),
+            torch.tensor(self.features[i].labels)
+        ]
+
+        return sample
+
+        #return self.transform(np.array([self.features[i].amr_input_ids])), self.transform(np.array([self.features[i].labels]))
+
+        #return self.transform(np.array([self.features[i].amr_input_ids, self.features[i].labels]))
 
 
 def convert_examples_to_features(
