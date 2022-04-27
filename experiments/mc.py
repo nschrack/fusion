@@ -3,6 +3,7 @@
 
 """ Finetuning models on CaseHOLD (e.g. Bert, RoBERTa, LEGAL-BERT)."""
 
+from lib2to3.pgen2 import token
 import sys
 import os
 import torch
@@ -33,7 +34,7 @@ from transformers import (
 )
 from transformers.trainer_utils import is_main_process
 from transformers import EarlyStoppingCallback
-from dataloader_fusion import MultipleChoiceDataset
+from dataloader_fusion import MultipleChoiceDataset, CustomDataCollatorWithPadding
 from dataloader_fusion import Split
 from sklearn.metrics import f1_score
 
@@ -264,6 +265,12 @@ def main():
 		micro_f1 = f1_score(y_true=p.label_ids, y_pred=preds, average='micro', zero_division=0)
 		return {'macro-f1': macro_f1, 'micro-f1': micro_f1}
 
+	collate_fn = CustomDataCollatorWithPadding(
+		tokenizer_amr,
+		tokenizer_text,
+		pad_to_multiple_of=8 if training_args.fp16 else None,
+	)
+
 	# Initialize our Trainer
 	trainer = Trainer(
 		model=model,
@@ -271,6 +278,7 @@ def main():
 		train_dataset=train_dataset,
 		eval_dataset=eval_dataset,
 		compute_metrics=compute_metrics,
+		data_collator=collate_fn,
 		callbacks=[EarlyStoppingCallback(early_stopping_patience=3)]
 	)
 
