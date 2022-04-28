@@ -7,6 +7,7 @@ from lib2to3.pgen2 import token
 import sys
 import os
 import torch
+from pynvml import *
 
 # adding case hold home directories to path for imports 
 sys.path.insert(0, os.getenv('HOME_PATH'))
