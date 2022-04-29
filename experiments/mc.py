@@ -124,7 +124,10 @@ class DataTrainingArguments:
 	overwrite_cache: bool = field(
 		default=False, metadata={"help": "Overwrite the cached training and evaluation sets"}
 	)
-
+	question: bool = field(
+		default=False, metadata={"help": "The data set has a context and question."}
+	)
+	
 def print_gpu_utilization():
 	if torch.cuda.is_available():
 		nvmlInit()

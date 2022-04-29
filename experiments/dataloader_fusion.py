@@ -89,6 +89,7 @@ class MultipleChoiceDataset(Dataset):
                     data_args.max_seq_length_amr,
                     tokenizer_text,
                     tokenizer_amr,
+                    data_args.question
                 )
                 logger.info("Training examples: %s", len(self.features))
 
@@ -108,7 +109,8 @@ def convert_examples_to_features(
     max_length_text: int,
     max_length_amr: int,
     tokenizer_text: PreTrainedTokenizer,
-    tokenizer_amr: PreTrainedTokenizer
+    tokenizer_amr: PreTrainedTokenizer,
+    question: bool
 ) -> List[Dict]:
     """
     Loads a data file into a list of `InputFusion`
@@ -118,8 +120,8 @@ def convert_examples_to_features(
         if ex_index % 10000 == 0:
             logger.info("Writing example %d of %d" % (ex_index, len(examples_text)))
 
-        text_input_ids, text_attention_mask, text_token_type_ids  = get_input_feature_text(examples_text[ex_index], tokenizer_text, max_length_text)
-        amr_input_ids, amr_attention_mask = get_input_feature_amr(examples_amr[ex_index], tokenizer_amr, max_length_amr)
+        text_input_ids, text_attention_mask, text_token_type_ids  = get_input_feature_text(examples_text[ex_index], tokenizer_text, max_length_text, question)
+        amr_input_ids, amr_attention_mask = get_input_feature_amr(examples_amr[ex_index], tokenizer_amr, max_length_amr, question)
 
         label = examples_text[ex_index]['label']
 
@@ -135,24 +137,40 @@ def convert_examples_to_features(
 
     return features    
 
-def get_input_feature_amr(example, tokenizer_amr, max_length):
+def get_input_feature_amr(example, tokenizer_amr, max_length, question):
     choices_inputs = []
-    for idx, ending in enumerate(example['endings']):
-        context = example['context']
-        question = example['question']
+    if question: 
+        for idx, ending in enumerate(example['endings']):
+            context = example['context']
+            question = example['question']
 
-        inputs = [tokenizer_amr.bos_token] \
-            + context.split() \
-            + [tokenizer_amr.eos_token] \
-            + [tokenizer_amr.eos_token] \
-            + question.split() \
-            + ending.split() \
-            + [tokenizer_amr.eos_token] \
+            inputs = [tokenizer_amr.bos_token] \
+                + context.split() \
+                + [tokenizer_amr.eos_token] \
+                + [tokenizer_amr.eos_token] \
+                + question.split() \
+                + ending.split() \
+                + [tokenizer_amr.eos_token] \
 
-        if len(inputs) > max_length:
-            logger.error("Input too long: implementation does not support truncate.")
+            if len(inputs) > max_length:
+                logger.error("Input too long: implementation does not support truncate.")
 
-        choices_inputs.append(inputs)
+            choices_inputs.append(inputs)
+    else: 
+        for idx, ending in enumerate(example['endings']):
+            context = example['context']
+
+            inputs = [tokenizer_amr.bos_token] \
+                + context.split() \
+                + [tokenizer_amr.eos_token] \
+                + [tokenizer_amr.eos_token] \
+                + ending.split() \
+                + [tokenizer_amr.eos_token] \
+
+            if len(inputs) > max_length:
+                logger.error("Input too long: implementation does not support truncate.")
+
+            choices_inputs.append(inputs)
 
     input_ids = amr_batch_encode(tokenizer_amr, choices_inputs)
 
@@ -163,18 +181,27 @@ def get_input_feature_amr(example, tokenizer_amr, max_length):
     return input_ids, attention_mask
     
 
-def get_input_feature_text(example, tokenizer_text, max_length):
+def get_input_feature_text(example, tokenizer_text, max_length, question):
     choices_inputs = []
-
-    for idx, ending in enumerate(example['endings']):
-        context = example['context']
-        question = example['question']
-        inputs = tokenizer_text(
-            context,
-            question + ending ,
-            add_special_tokens=True,
-        )
-        choices_inputs.append(inputs)
+    if question:
+        for idx, ending in enumerate(example['endings']):
+            context = example['context']
+            question = example['question']
+            inputs = tokenizer_text(
+                context,
+                question + ending ,
+                add_special_tokens=True,
+            )
+            choices_inputs.append(inputs)
+    else: 
+        for idx, ending in enumerate(example['endings']):
+            context = example['context']
+            inputs = tokenizer_text(
+                context,
+                ending ,
+                add_special_tokens=True,
+            )
+            choices_inputs.append(inputs)
     
     input_ids = [x["input_ids"] for x in choices_inputs]
     attention_mask = (
