@@ -194,12 +194,14 @@ def get_input_feature_text(example, tokenizer_text, max_length, question):
             )
             choices_inputs.append(inputs)
     else: 
-        for idx, ending in enumerate(example['endings']):
+        for idx, ending in enumerate(example['endings']): 
             context = example['context']
             inputs = tokenizer_text(
                 context,
                 ending ,
                 add_special_tokens=True,
+                max_length = max_length,
+                truncation=True
             )
             choices_inputs.append(inputs)
     
