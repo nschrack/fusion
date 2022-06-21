@@ -293,7 +293,7 @@ def main():
 
 	# Training
 	if training_args.do_train:
-		trainer.train('/Users/niko/ML/fusion/checkpoint/')
+		trainer.train('/home/kpd426/fusion/logs/case_hold/nlpaueb/legal-bert-base-uncased/seed_1/checkpoint-11250')
 		#trainer.train(
 		#	model_path=model_args.model_name_or_path_text if os.path.isdir(model_args.model_name_or_path_text) else None
 		#)
