@@ -324,9 +324,17 @@ def main():
 		trainer.log_metrics("predict", metrics)
 		trainer.save_metrics("predict", metrics)
 
-		pred = np.argmax(predictions, axis=1)
-		acc = accuracy_score(labels, pred)
-		logger.info("accuracy:",acc)
+		#pred = np.argmax(predictions, axis=1)
+		#acc = accuracy_score(labels, pred)
+		#logger.info("accuracy: ", acc)
+
+		output_predict_file = os.path.join(training_args.output_dir, "pred_fusion.csv")
+		with open(output_predict_file, 'w') as fp:
+			fp.write('\n'.join(str(no) for no in pred))
+
+		output_predict_file = os.path.join(training_args.output_dir, "labels.csv")
+		with open(output_predict_file, 'w') as fp:
+			fp.write('\n'.join(str(no) for no in labels))
 
 		output_predict_file = os.path.join(training_args.output_dir, "test_predictions.csv")
 		if trainer.is_world_process_zero():
