@@ -324,7 +324,7 @@ def main():
 		trainer.log_metrics("predict", metrics)
 		trainer.save_metrics("predict", metrics)
 
-		#pred = np.argmax(predictions, axis=1)
+		pred = np.argmax(predictions, axis=1)
 		#acc = accuracy_score(labels, pred)
 		#logger.info("accuracy: ", acc)
 
