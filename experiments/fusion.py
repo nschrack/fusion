@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
 
-""" Finetuning models on CaseHOLD (e.g. Bert, RoBERTa, LEGAL-BERT)."""
+""" Finetuning fusion model on CaseHOLD and LogiQA. Based on LexGLUE implementation of CaseHOLD."""
 
 from lib2to3.pgen2 import token
 import sys
@@ -39,7 +39,6 @@ from dataloader_fusion import MultipleChoiceDataset, CustomDataCollatorWithPaddi
 from dataloader_fusion import Split
 from sklearn.metrics import f1_score
 
-from models.bart import BartForMultipleChoiceClassificationSentRep as BartForMultipleChoice
 from models.fusion import Fusion
 from spring.spring_amr.tokenization_bart import PENMANBartTokenizer
 

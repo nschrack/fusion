@@ -39,7 +39,6 @@ from dataloader_fusion import MultipleChoiceDataset, CustomDataCollatorWithPaddi
 from dataloader_fusion import Split
 from sklearn.metrics import f1_score, accuracy_score
 
-from models.bart import BartForMultipleChoiceClassificationSentRep as BartForMultipleChoice
 from models.fusion import Fusion
 from spring.spring_amr.tokenization_bart import PENMANBartTokenizer
 
@@ -209,7 +208,7 @@ def main():
 		amr_eos_token_id = amr_config.eos_token_id
 	)
 
-	#model.save_pretrained('/Users/niko/ML/fusion/model_config')
+	model.save_pretrained('/Users/niko/ML/fusion/model_config')
 	#model = torch.hub.load('huggingface/pytorch-transformers', 'model', '/Users/niko/ML/fusion/checkpoint/')
 
 	train_dataset = None
