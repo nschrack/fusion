@@ -266,6 +266,11 @@ class CustomDataCollatorWithPadding:
         
         amr = []
         text = []
+
+        # since this is a multiple choice task each instance has multiple inputs.
+        # tokenizer.pad can not handle a batch of instances with multiple inputs.
+        # therefore the inputs are flattened, run through the pad function, and then
+        # reshaped into its original form.
         for i in features:
             for id, _ in enumerate(i['amr_input_ids']):
                 amr.append({
@@ -322,8 +327,3 @@ def th_delete(tensor, indices):
     mask = torch.ones(tensor.numel(), dtype=torch.bool)
     mask[indices] = False
     return tensor[mask]
-
-
-            #    max_length=max_length,
-            #padding="max_length",
-            #truncation=True,
