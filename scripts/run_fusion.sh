@@ -8,13 +8,14 @@ SEED=1
 GPU_NUMBER=0
 MODEL_NAME='fusion'
 MODEL_NAME_TEXT='nlpaueb/legal-bert-base-uncased'
-MODEL_NAME_AMR='/path-to-home/amrbart/model'
+MODEL_NAME_AMR='/Users/niko/ML/fusion/amrbart/model'
+CONCAT_EMB_DIM=1536 # last hidden state size of both models added up
 BATCH_SIZE=2
 ACCUMULATION_STEPS=4
 TASK='case_hold_fusion'
-HOME_PATH='/path-to-home'
-DATA_SET_PATH_TEXT='/path-to-home/data/case_hold/dataset_text'
-DATA_SET_PATH_AMR='/path-to-home/data/case_hold/dataset_amr'
+HOME_PATH='/Users/niko/ML/fusion'
+DATA_SET_PATH_TEXT='/Users/niko/ML/fusion/data/case_hold/dataset_text'
+DATA_SET_PATH_AMR='/Users/niko/ML/fusion/data/case_hold/dataset_amr'
 
 CUDA_VISIBLE_DEVICES=${GPU_NUMBER} HOME_PATH=${HOME_PATH} python experiments/fusion.py \
     --task_name ${TASK} \
@@ -38,9 +39,10 @@ CUDA_VISIBLE_DEVICES=${GPU_NUMBER} HOME_PATH=${HOME_PATH} python experiments/fus
     --data_set_path_amr ${DATA_SET_PATH_AMR} \
     --gradient_accumulation_steps ${ACCUMULATION_STEPS} \
     --eval_accumulation_steps ${ACCUMULATION_STEPS} \
+    --concat_emb_dim ${CONCAT_EMB_DIM} \
     --max_seq_length_text 512 \
     --max_seq_length_amr 1024 \
-    --fp16 \
-    --fp16_full_eval \
+    #--fp16 \
+    #--fp16_full_eval \
     #--question needs to be set for logiqa (which has a context and question)
 

@@ -57,6 +57,9 @@ class ModelArguments:
 	model_name_or_path_amr: str = field(
 		metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
 	)
+	checkpoint: str = field(
+		metadata={"help": "The path to the model checkpoint which is used for prediction"}
+	)
 	config_name: Optional[str] = field(
 		default=None, metadata={"help": "Pretrained config name or path if not the same as model_name"}
 	)
@@ -66,6 +69,11 @@ class ModelArguments:
 	cache_dir: Optional[str] = field(
 		default=None,
 		metadata={"help": "Where do you want to store the pretrained models downloaded from huggingface.co"},
+	)
+	concat_emb_dim: int = field(
+		default=1536,
+		metadata={
+			"help": "The last hidden state size of both models added up"},
 	)
 
 
@@ -192,7 +200,6 @@ def main():
 
 	amr_config = AutoConfig.from_pretrained(
 		model_args.model_name_or_path_amr,
-		num_labels=5,
 		finetuning_task=data_args.task_name,
 		cache_dir=model_args.cache_dir,
 	)
@@ -203,13 +210,10 @@ def main():
 	model = Fusion(
 		text_model = text_model,
 		amr_model = amr_model,
-		concat_emb_dim = 1536,	 # last hidden state size of both models added up
+		concat_emb_dim = model_args.concat_emb_dim,	 # last hidden state size of both models added up
 		classifier_dropout = 0.1,
 		amr_eos_token_id = amr_config.eos_token_id
 	)
-
-	model.save_pretrained('/Users/niko/ML/fusion/model_config')
-	#model = torch.hub.load('huggingface/pytorch-transformers', 'model', '/Users/niko/ML/fusion/checkpoint/')
 
 	train_dataset = None
 	eval_dataset = None
@@ -252,9 +256,6 @@ def main():
 	if training_args.do_train:
 		if data_args.max_train_samples is not None:
 			train_dataset = train_dataset[:data_args.max_train_samples]
-		# Log a few random samples from the training set:
-		#for index in random.sample(range(len(train_dataset)), 3):
-		#	logger.info(f"Sample {index} of the training set: {train_dataset[index]}.")
 
 	if training_args.do_eval:
 		if data_args.max_eval_samples is not None:
@@ -292,10 +293,7 @@ def main():
 
 	# Training
 	if training_args.do_train:
-		trainer.train('/home/kpd426/fusion/logs/case_hold/nlpaueb/legal-bert-base-uncased/seed_1/checkpoint-11250')
-		#trainer.train(
-		#	model_path=model_args.model_name_or_path_text if os.path.isdir(model_args.model_name_or_path_text) else None
-		#)
+		trainer.train(model_args.checkpoint) 
 		trainer.save_model()
 
 	# Evaluation on eval_dataset

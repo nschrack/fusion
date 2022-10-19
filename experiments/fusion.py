@@ -67,6 +67,11 @@ class ModelArguments:
 		default=None,
 		metadata={"help": "Where do you want to store the pretrained models downloaded from huggingface.co"},
 	)
+	concat_emb_dim: int = field(
+		default=1536,
+		metadata={
+			"help": "The last hidden state size of both models added up"},
+	)
 
 
 @dataclass
@@ -203,7 +208,6 @@ def main():
 
 	amr_config = AutoConfig.from_pretrained(
 		model_args.model_name_or_path_amr,
-		num_labels=5,
 		finetuning_task=data_args.task_name,
 		cache_dir=model_args.cache_dir,
 	)
@@ -214,7 +218,7 @@ def main():
 	model = Fusion(
 		text_model = text_model,
 		amr_model = amr_model,
-		concat_emb_dim = 1536,	 # last hidden state size of both models added up
+		concat_emb_dim = model_args.concat_emb_dim,	 # last hidden state size of both models added up
 		classifier_dropout = 0.1,
 		amr_eos_token_id = amr_config.eos_token_id
 	)
@@ -299,9 +303,7 @@ def main():
 
 	# Training
 	if training_args.do_train:
-		trainer.train(
-			model_path=model_args.model_name_or_path_text if os.path.isdir(model_args.model_name_or_path_text) else None
-		)
+		trainer.train()
 		trainer.save_model()
 
 	# Evaluation on eval_dataset
@@ -315,7 +317,7 @@ def main():
 		trainer.log_metrics("eval", metrics)
 		trainer.save_metrics("eval", metrics)
 
-	# Predict on eval_dataset
+	# Predict on test_dataset
 	if training_args.do_predict:
 		logger.info("*** Predict ***")
 
