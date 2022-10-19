@@ -10,3 +10,4 @@ Other information:
 - Spring is part of the project since we need the PENMANBartTokenizer (which is used by AMRBART).
 - The fusion model fine-tuned on CaseHOLD can be found here: https://huggingface.co/niks883/fusion-case-hold
 - The fusion model fine-tuned on LogiQA can be found here: https://huggingface.co/niks883/fusion-logiqa
+- For other baselines models refere to this repository https://github.com/nschrack/baselines-mcqa
